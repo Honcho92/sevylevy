@@ -1,0 +1,736 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Dash Companion">
+  <meta name="theme-color" content="#0A0E17">
+  <meta name="description" content="7-Eleven DoorDash Companion — Order tracking, inventory & analytics">
+  <title>Dash Companion</title>
+  <link rel="manifest" href="manifest.json">
+  <!-- Apple Touch Icon (inline base64 orange 7E icon) -->
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0A0E17;
+      --bg-secondary: #111827;
+      --bg-card: #151C2C;
+      --bg-card-hover: #1A2236;
+      --bg-elevated: #1E2740;
+      --border: #1F2B3E;
+      --border-light: #2A3A52;
+      --text-primary: #F1F5F9;
+      --text-secondary: #8B9AB5;
+      --text-muted: #5A6A82;
+      --accent: #FF6B35;
+      --accent-glow: rgba(255, 107, 53, 0.15);
+      --accent-green: #06D6A0;
+      --accent-green-glow: rgba(6, 214, 160, 0.15);
+      --accent-yellow: #FFBA08;
+      --accent-yellow-glow: rgba(255, 186, 8, 0.12);
+      --accent-blue: #118AB2;
+      --accent-red: #EF4444;
+      --accent-red-glow: rgba(239, 68, 68, 0.12);
+      --radius: 14px;
+      --radius-sm: 8px;
+      --radius-xs: 6px;
+      --shadow: 0 4px 24px rgba(0,0,0,0.3);
+      --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    html, body {
+      font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      min-height: 100dvh;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      overscroll-behavior-y: contain;
+    }
+
+    /* ── App Shell ── */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* ── Header ── */
+    .header {
+      padding: 16px 20px 12px;
+      padding-top: calc(16px + env(safe-area-inset-top, 0px));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: linear-gradient(180deg, var(--bg-primary) 70%, transparent);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+    }
+
+    .header-brand { display: flex; align-items: center; gap: 10px; }
+
+    .header-logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent) 0%, #FF8F65 100%);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 800; font-size: 14px; color: white; letter-spacing: -0.5px;
+      box-shadow: 0 2px 12px rgba(255, 107, 53, 0.3);
+    }
+
+    .header-title { font-weight: 700; font-size: 18px; letter-spacing: -0.3px; }
+    .header-subtitle {
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+
+    .header-actions { display: flex; gap: 8px; }
+
+    .icon-btn {
+      width: 40px; height: 40px; border-radius: 12px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all var(--transition); position: relative;
+    }
+    .icon-btn:active { transform: scale(0.92); }
+
+    .notif-dot {
+      position: absolute; top: 6px; right: 6px;
+      width: 8px; height: 8px;
+      background: var(--accent); border-radius: 50%;
+      border: 2px solid var(--bg-primary);
+      animation: pulseDot 2s infinite;
+    }
+    @keyframes pulseDot { 0%,100%{opacity:1} 50%{opacity:.5} }
+
+    /* ── Main Content ── */
+    .main {
+      flex: 1; padding: 0 16px 100px;
+      overflow-y: auto; -webkit-overflow-scrolling: touch;
+    }
+
+    /* ── Stats ── */
+    .stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 20px; }
+    .stat {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 14px 12px; text-align: center;
+    }
+    .stat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 24px; font-weight: 700; letter-spacing: -1px; line-height: 1; margin-bottom: 4px;
+    }
+    .stat-lbl {
+      font-size: 11px; color: var(--text-muted); font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .c-accent { color: var(--accent); }
+    .c-green { color: var(--accent-green); }
+    .c-yellow { color: var(--accent-yellow); }
+
+    /* ── Section Header ── */
+    .sec-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; margin-top: 8px; }
+    .sec-title { font-size: 15px; font-weight: 600; color: var(--text-secondary); letter-spacing: 0.3px; }
+    .sec-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; font-weight: 600;
+      background: var(--accent-glow); color: var(--accent);
+      padding: 3px 8px; border-radius: 6px;
+    }
+
+    /* ── Filter Chips ── */
+    .filters {
+      display: flex; gap: 8px; overflow-x: auto;
+      padding-bottom: 12px; margin-bottom: 4px;
+      scrollbar-width: none; -ms-overflow-style: none;
+    }
+    .filters::-webkit-scrollbar { display: none; }
+    .chip {
+      flex-shrink: 0; padding: 7px 14px; border-radius: 20px;
+      font-size: 13px; font-weight: 500; font-family: 'Outfit', sans-serif;
+      border: 1px solid var(--border); background: var(--bg-card);
+      color: var(--text-secondary); cursor: pointer; transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .chip:active { transform: scale(0.95); }
+    .chip.active {
+      background: var(--accent); border-color: var(--accent); color: white;
+      box-shadow: 0 2px 12px rgba(255,107,53,0.3);
+    }
+
+    /* ── Order Card ── */
+    .order {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 16px; margin-bottom: 10px;
+      transition: all var(--transition); animation: slideUp .3s ease-out;
+    }
+    @keyframes slideUp { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+    .order:active { transform: scale(0.985); }
+
+    .order-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+    .order-id { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; }
+    .order-time { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
+    .order-time.urgent { color: var(--accent-red); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 6px;
+      font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+    }
+    .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+
+    .order-items { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 12px; }
+    .order-foot { display: flex; align-items: center; justify-content: space-between; }
+    .order-total { font-family: 'JetBrains Mono', monospace; font-size: 16px; font-weight: 700; color: var(--accent-green); }
+
+    .btn {
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 600; border: none; cursor: pointer;
+      transition: all var(--transition); display: flex; align-items: center; gap: 5px;
+      font-family: 'Outfit', sans-serif;
+    }
+    .btn:active { transform: scale(0.93); }
+    .btn-primary {
+      background: var(--accent); color: white;
+      box-shadow: 0 2px 8px rgba(255,107,53,0.25);
+    }
+    .btn-secondary { background: var(--bg-elevated); color: var(--text-secondary); border: 1px solid var(--border); }
+
+    /* ── Search Bar ── */
+    .search {
+      display: flex; align-items: center; gap: 10px;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 10px 14px; margin-bottom: 14px;
+      transition: border-color var(--transition);
+    }
+    .search:focus-within { border-color: var(--accent); }
+    .search input {
+      flex: 1; background: none; border: none; color: var(--text-primary);
+      font-size: 14px; font-family: 'Outfit', sans-serif; outline: none;
+    }
+    .search input::placeholder { color: var(--text-muted); }
+
+    /* ── Inventory Item ── */
+    .inv-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 12px 14px; margin-bottom: 8px;
+    }
+    .inv-info { flex: 1; }
+    .inv-name { font-size: 14px; font-weight: 500; margin-bottom: 2px; }
+    .inv-meta { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 8px; }
+    .inv-price { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; color: var(--accent-green); margin-right: 12px; }
+    .cat-chip {
+      font-size: 10px; padding: 2px 6px; border-radius: 4px;
+      font-weight: 600; letter-spacing: 0.3px;
+      background: rgba(255,186,8,0.12); color: var(--accent-yellow);
+    }
+
+    .toggle {
+      width: 44px; height: 24px; border-radius: 12px;
+      background: var(--accent-red); position: relative;
+      cursor: pointer; transition: background var(--transition); flex-shrink: 0;
+      border: none;
+    }
+    .toggle.on { background: var(--accent-green); }
+    .toggle::after {
+      content: ''; position: absolute; top: 3px; left: 3px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: white; transition: transform var(--transition);
+      box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+    }
+    .toggle.on::after { transform: translateX(20px); }
+
+    /* ── Charts ── */
+    .chart-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 18px; margin-bottom: 14px;
+    }
+    .chart-title { font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; padding-top: 8px; }
+    .bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 6px; height: 100%; justify-content: flex-end; }
+    .bar { width: 100%; border-radius: 4px 4px 0 0; transition: height .6s cubic-bezier(.34,1.56,.64,1); min-height: 4px; }
+    .bar-lbl { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-muted); font-weight: 500; }
+
+    .top-list { display: flex; flex-direction: column; gap: 10px; }
+    .top-item { display: flex; align-items: center; gap: 12px; }
+    .top-rank { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 700; color: var(--text-muted); width: 20px; text-align: center; }
+    .top-rank.gold { color: var(--accent-yellow); }
+    .top-rank.silver { color: #A0AEC0; }
+    .top-rank.bronze { color: #CD7F32; }
+    .top-bar-bg { flex: 1; height: 32px; background: var(--bg-elevated); border-radius: 6px; overflow: hidden; }
+    .top-bar-fill {
+      height: 100%; border-radius: 6px;
+      transition: width .8s cubic-bezier(.34,1.56,.64,1);
+      display: flex; align-items: center; padding-left: 10px;
+    }
+    .top-bar-name { font-size: 12px; font-weight: 500; color: white; white-space: nowrap; text-shadow: 0 1px 2px rgba(0,0,0,.3); }
+    .top-bar-count { font-family: 'JetBrains Mono', monospace; font-size: 12px; font-weight: 600; color: var(--text-secondary); width: 32px; text-align: right; }
+
+    /* ── Bottom Nav ── */
+    .nav {
+      position: fixed; bottom: 0; left: 50%; transform: translateX(-50%);
+      width: 100%; max-width: 480px;
+      background: rgba(17,24,39,0.92); border-top: 1px solid var(--border);
+      display: flex; padding: 8px 16px;
+      padding-bottom: calc(8px + var(--safe-bottom));
+      z-index: 200;
+      backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    }
+    .nav-btn {
+      flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+      padding: 8px 4px; border-radius: 12px; cursor: pointer;
+      color: var(--text-muted); transition: all var(--transition);
+      background: transparent; border: none; font-family: 'Outfit', sans-serif;
+    }
+    .nav-btn:active { transform: scale(0.9); }
+    .nav-btn.active { color: var(--accent); }
+    .nav-lbl { font-size: 11px; font-weight: 600; letter-spacing: 0.2px; }
+    .nav-dot { width: 20px; height: 3px; background: var(--accent); border-radius: 2px; opacity: 0; transform: scaleX(0); transition: all var(--transition); }
+    .nav-btn.active .nav-dot { opacity: 1; transform: scaleX(1); }
+
+    /* ── Modal ── */
+    .modal-bg {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(8px); z-index: 300;
+      display: flex; align-items: flex-end; justify-content: center;
+      animation: fadeIn .2s ease;
+    }
+    @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+    .modal-sheet {
+      width: 100%; max-width: 480px;
+      background: var(--bg-secondary); border-radius: 20px 20px 0 0;
+      padding: 20px; padding-bottom: calc(20px + var(--safe-bottom));
+      max-height: 85vh; overflow-y: auto;
+      animation: slideModal .3s cubic-bezier(.32,.72,0,1);
+    }
+    @keyframes slideModal { from{transform:translateY(100%)} to{transform:translateY(0)} }
+    .modal-handle { width: 36px; height: 4px; background: var(--border-light); border-radius: 2px; margin: 0 auto 16px; }
+    .modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+    .fg { margin-bottom: 14px; }
+    .fl { font-size: 12px; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; }
+    .fi {
+      width: 100%; padding: 12px 14px; background: var(--bg-card);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text-primary); font-size: 14px; font-family: 'Outfit', sans-serif; outline: none;
+    }
+    .fi:focus { border-color: var(--accent); }
+
+    .item-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .item-chip {
+      display: flex; align-items: center; gap: 4px;
+      padding: 5px 10px; background: var(--bg-elevated);
+      border-radius: 6px; font-size: 12px; color: var(--text-secondary);
+    }
+    .item-chip-x { cursor: pointer; color: var(--text-muted); display: flex; align-items: center; }
+    .item-chip-x:hover { color: var(--accent-red); }
+
+    .submit-btn {
+      width: 100%; padding: 14px; border-radius: var(--radius);
+      background: linear-gradient(135deg, var(--accent) 0%, #FF8F65 100%);
+      color: white; font-size: 15px; font-weight: 700;
+      border: none; cursor: pointer; font-family: 'Outfit', sans-serif;
+      letter-spacing: 0.3px; box-shadow: 0 4px 16px rgba(255,107,53,0.3);
+      transition: all var(--transition); margin-top: 8px;
+    }
+    .submit-btn:active { transform: scale(0.97); }
+    .submit-btn:disabled { opacity: 0.4; }
+
+    .empty { text-align: center; padding: 48px 20px; color: var(--text-muted); }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; opacity: 0.5; }
+    .empty-text { font-size: 14px; line-height: 1.5; }
+
+    /* Tab visibility */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    .main::-webkit-scrollbar { width: 4px; }
+    .main::-webkit-scrollbar-track { background: transparent; }
+    .main::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app">
+  <!-- Header -->
+  <header class="header">
+    <div class="header-brand">
+      <div class="header-logo">7E</div>
+      <div>
+        <div class="header-title">Dash Companion</div>
+        <div class="header-subtitle">DoorDash Manager</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="icon-btn" id="bellBtn" onclick="clearNotifs()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span class="notif-dot" id="notifDot"></span>
+      </button>
+      <button class="icon-btn" onclick="openModal()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="main" id="mainContent">
+    <!-- Orders Tab -->
+    <div class="tab-content active" id="tab-orders"></div>
+    <!-- Inventory Tab -->
+    <div class="tab-content" id="tab-inventory"></div>
+    <!-- Analytics Tab -->
+    <div class="tab-content" id="tab-analytics"></div>
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav class="nav">
+    <button class="nav-btn active" data-tab="orders" onclick="switchTab('orders')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/><path d="M9 14l2 2 4-4"/></svg>
+      <span class="nav-lbl">Orders</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-btn" data-tab="inventory" onclick="switchTab('inventory')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg>
+      <span class="nav-lbl">Inventory</span>
+      <span class="nav-dot"></span>
+    </button>
+    <button class="nav-btn" data-tab="analytics" onclick="switchTab('analytics')">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      <span class="nav-lbl">Analytics</span>
+      <span class="nav-dot"></span>
+    </button>
+  </nav>
+
+  <!-- Modal -->
+  <div class="modal-bg" id="modal" style="display:none" onclick="closeModal()">
+    <div class="modal-sheet" onclick="event.stopPropagation()">
+      <div class="modal-handle"></div>
+      <div class="modal-title">New Order</div>
+      <div class="fg">
+        <label class="fl">Customer Name</label>
+        <input class="fi" id="custName" placeholder="DoorDash Customer">
+      </div>
+      <div class="fg">
+        <label class="fl">Add Items</label>
+        <div class="search">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="modalSearch" placeholder="Search items..." oninput="renderModalResults()">
+        </div>
+        <div id="modalResults"></div>
+        <div class="item-chips" id="modalChips"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+        <span class="fl" style="margin:0">Total</span>
+        <span class="order-total" id="modalTotal">$0.00</span>
+      </div>
+      <button class="submit-btn" id="submitOrder" onclick="submitOrder()" disabled>Create Order</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────
+const CATEGORIES = ["Drinks","Snacks","Hot Food","Tobacco","Candy","Ice Cream","Personal Care","Grocery","Alcohol","Other"];
+const STATUS_FLOW = ["new","preparing","ready","picked_up","completed"];
+const STATUS_LABELS = {new:"New",preparing:"Preparing",ready:"Ready",picked_up:"Picked Up",completed:"Completed"};
+const STATUS_COLORS = {new:"#FF6B35",preparing:"#FFBA08",ready:"#06D6A0",picked_up:"#118AB2",completed:"#6c757d"};
+
+const DEFAULT_ITEMS = [
+  {id:1,name:"Big Gulp 32oz",category:"Drinks",price:1.89,inStock:true,ordersToday:12},
+  {id:2,name:"Slurpee Medium",category:"Drinks",price:2.19,inStock:true,ordersToday:18},
+  {id:3,name:"Hot Dog Roller",category:"Hot Food",price:2.49,inStock:true,ordersToday:8},
+  {id:4,name:"Taquito 3-Pack",category:"Hot Food",price:3.99,inStock:false,ordersToday:5},
+  {id:5,name:"Doritos Nacho",category:"Snacks",price:2.29,inStock:true,ordersToday:14},
+  {id:6,name:"Red Bull 12oz",category:"Drinks",price:3.49,inStock:true,ordersToday:22},
+  {id:7,name:"Monster Energy",category:"Drinks",price:3.29,inStock:true,ordersToday:16},
+  {id:8,name:"Takis Fuego",category:"Snacks",price:2.49,inStock:true,ordersToday:11},
+  {id:9,name:"Pizza Slice",category:"Hot Food",price:3.49,inStock:true,ordersToday:7},
+  {id:10,name:"Cookie 2-Pack",category:"Snacks",price:1.99,inStock:true,ordersToday:4},
+];
+
+function load(k, def) { try { const v = localStorage.getItem('dc_'+k); return v ? JSON.parse(v) : def; } catch { return def; } }
+function save(k, v) { try { localStorage.setItem('dc_'+k, JSON.stringify(v)); } catch {} }
+
+let state = {
+  tab: 'orders',
+  orders: load('orders', []),
+  inventory: load('inventory', DEFAULT_ITEMS),
+  statusFilter: 'all',
+  invSearch: '',
+  invCategory: 'All',
+  notifs: load('notifs', 0),
+  modalItems: [],
+};
+
+// Seed demo orders on first run
+if (state.orders.length === 0) {
+  state.orders = [
+    { id: genId(), customerName:"DoorDash #4821", items:[{id:6,name:"Red Bull 12oz",price:3.49,qty:2},{id:5,name:"Doritos Nacho",price:2.29,qty:1}], total:9.27, status:"new", createdAt: new Date(Date.now()-3*60000).toISOString() },
+    { id: genId(), customerName:"DoorDash #4819", items:[{id:2,name:"Slurpee Medium",price:2.19,qty:2},{id:3,name:"Hot Dog Roller",price:2.49,qty:1},{id:10,name:"Cookie 2-Pack",price:1.99,qty:1}], total:8.86, status:"preparing", createdAt: new Date(Date.now()-12*60000).toISOString() },
+    { id: genId(), customerName:"DoorDash #4815", items:[{id:7,name:"Monster Energy",price:3.29,qty:3}], total:9.87, status:"ready", createdAt: new Date(Date.now()-22*60000).toISOString() },
+    { id: genId(), customerName:"DoorDash #4810", items:[{id:9,name:"Pizza Slice",price:3.49,qty:2},{id:1,name:"Big Gulp 32oz",price:1.89,qty:1}], total:8.87, status:"completed", createdAt: new Date(Date.now()-45*60000).toISOString() },
+  ];
+  state.notifs = 1;
+  persist();
+}
+
+function persist() { save('orders', state.orders); save('inventory', state.inventory); save('notifs', state.notifs); }
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2,5); }
+function fmtTime(d) { return new Date(d).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}); }
+function minsAgo(d) { return Math.floor((Date.now()-new Date(d).getTime())/60000); }
+
+// ── SVG Snippets ─────────────────────────────────────────────────────
+const svgClock = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>';
+const svgArrow = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>';
+const svgCheck = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>';
+const svgTrending = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>';
+const svgDollar = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>';
+const svgX = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+const svgSearch = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>';
+
+// ── Render ────────────────────────────────────────────────────────────
+function render() {
+  const active = state.orders.filter(o => o.status !== 'completed');
+  const revenue = state.orders.reduce((s,o) => s+o.total, 0);
+  const oos = state.inventory.filter(i => !i.inStock).length;
+
+  // Notif dot
+  document.getElementById('notifDot').style.display = state.notifs > 0 ? 'block' : 'none';
+
+  renderOrders(active, revenue, oos);
+  renderInventory(oos);
+  renderAnalytics(revenue, active);
+}
+
+function renderOrders(active, revenue, oos) {
+  const filtered = state.statusFilter === 'all' ? state.orders : state.orders.filter(o => o.status === state.statusFilter);
+
+  let html = `
+    <div class="stats">
+      <div class="stat"><div class="stat-val c-accent">${active.length}</div><div class="stat-lbl">Active</div></div>
+      <div class="stat"><div class="stat-val c-green">$${revenue.toFixed(0)}</div><div class="stat-lbl">Revenue</div></div>
+      <div class="stat"><div class="stat-val c-yellow">${oos}</div><div class="stat-lbl">Out of Stock</div></div>
+    </div>
+    <div class="sec-hdr">
+      <span class="sec-title">Orders</span>
+      ${active.length > 0 ? `<span class="sec-badge">${active.length} active</span>` : ''}
+    </div>
+    <div class="filters">
+      ${['all',...STATUS_FLOW].map(s => `<button class="chip ${state.statusFilter===s?'active':''}" onclick="setFilter('${s}')">${s==='all'?'All':STATUS_LABELS[s]}</button>`).join('')}
+    </div>`;
+
+  if (filtered.length === 0) {
+    html += `<div class="empty"><div class="empty-icon">📋</div><div class="empty-text">No orders matching this filter.<br>Tap + to add a new order.</div></div>`;
+  } else {
+    filtered.forEach(o => {
+      const mins = minsAgo(o.createdAt);
+      const urgent = o.status === 'new' && mins > 10;
+      const next = STATUS_FLOW[STATUS_FLOW.indexOf(o.status)+1];
+      html += `
+        <div class="order">
+          <div class="order-hdr">
+            <div>
+              <div class="order-id">#${o.id.toUpperCase()}</div>
+              <div class="order-time ${urgent?'urgent':''}">${svgClock} ${mins}m ago — ${fmtTime(o.createdAt)}</div>
+            </div>
+            <div class="badge" style="background:${STATUS_COLORS[o.status]}18;color:${STATUS_COLORS[o.status]}">
+              <span class="badge-dot" style="background:${STATUS_COLORS[o.status]}"></span>
+              ${STATUS_LABELS[o.status]}
+            </div>
+          </div>
+          <div class="order-items">${o.items.map(i => `<div>${i.qty}x ${i.name}</div>`).join('')}</div>
+          <div class="order-foot">
+            <div class="order-total">$${o.total.toFixed(2)}</div>
+            ${next ? `<button class="btn btn-primary" onclick="advanceOrder('${o.id}')">${next==='completed'?svgCheck:svgArrow} ${STATUS_LABELS[next]}</button>` : ''}
+          </div>
+        </div>`;
+    });
+  }
+  document.getElementById('tab-orders').innerHTML = html;
+}
+
+function renderInventory(oos) {
+  const filtered = state.inventory.filter(i => {
+    const ms = i.name.toLowerCase().includes(state.invSearch.toLowerCase());
+    const mc = state.invCategory === 'All' || i.category === state.invCategory;
+    return ms && mc;
+  });
+
+  let html = `
+    <div class="sec-hdr">
+      <span class="sec-title">Inventory</span>
+      <span class="sec-badge">${oos} unavailable</span>
+    </div>
+    <div class="search">${svgSearch}<input placeholder="Search items..." value="${state.invSearch}" oninput="state.invSearch=this.value;render()"></div>
+    <div class="filters">
+      ${['All',...CATEGORIES].map(c => `<button class="chip ${state.invCategory===c?'active':''}" onclick="setInvCat('${c}')">${c}</button>`).join('')}
+    </div>`;
+
+  filtered.forEach(i => {
+    html += `
+      <div class="inv-item">
+        <div class="inv-info">
+          <div class="inv-name">${i.name}</div>
+          <div class="inv-meta">
+            <span class="cat-chip">${i.category}</span>
+            <span>${i.ordersToday} orders today</span>
+          </div>
+        </div>
+        <div class="inv-price">$${i.price.toFixed(2)}</div>
+        <button class="toggle ${i.inStock?'on':''}" onclick="toggleStock(${i.id})"></button>
+      </div>`;
+  });
+  document.getElementById('tab-inventory').innerHTML = html;
+}
+
+function renderAnalytics(revenue, active) {
+  const hours = Array.from({length:12},(_,i)=>i+8);
+  const hCounts = hours.map(h => state.orders.filter(o => new Date(o.createdAt).getHours()===h).length);
+  const hMax = Math.max(...hCounts, 1);
+
+  const sorted = [...state.inventory].sort((a,b)=>b.ordersToday-a.ordersToday).slice(0,5);
+  const tMax = sorted[0]?.ordersToday || 1;
+  const colors = ['var(--accent)','var(--accent-green)','var(--accent-yellow)','var(--accent-blue)','#8B5CF6'];
+  const ranks = ['gold','silver','bronze','',''];
+
+  let html = `
+    <div class="stats">
+      <div class="stat"><div class="stat-val c-accent">${state.orders.length}</div><div class="stat-lbl">Total Orders</div></div>
+      <div class="stat"><div class="stat-val c-green">$${revenue.toFixed(2)}</div><div class="stat-lbl">Revenue</div></div>
+      <div class="stat"><div class="stat-val c-yellow">$${state.orders.length>0?(revenue/state.orders.length).toFixed(2):'0'}</div><div class="stat-lbl">Avg Order</div></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">${svgTrending} Orders by Hour</div>
+      <div class="bar-chart">
+        ${hours.map((h,i) => `<div class="bar-col"><div class="bar" style="height:${(hCounts[i]/hMax)*100}%;background:${hCounts[i]===hMax?'linear-gradient(180deg,var(--accent),#FF8F65)':'var(--bg-elevated)'}"></div><span class="bar-lbl">${h>12?h-12:h}${h>=12?'p':'a'}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">${svgTrending} Top Items Today</div>
+      <div class="top-list">
+        ${sorted.map((it,i) => `<div class="top-item"><span class="top-rank ${ranks[i]}">${i+1}</span><div class="top-bar-bg"><div class="top-bar-fill" style="width:${(it.ordersToday/tMax)*100}%;background:${colors[i]}"><span class="top-bar-name">${it.name}</span></div></div><span class="top-bar-count">${it.ordersToday}</span></div>`).join('')}
+      </div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title">${svgDollar} Revenue Summary</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div><div class="stat-lbl">Completed</div><div class="stat-val c-green" style="font-size:20px;margin-top:4px">${state.orders.filter(o=>o.status==='completed').length}</div></div>
+        <div><div class="stat-lbl">In Progress</div><div class="stat-val c-accent" style="font-size:20px;margin-top:4px">${active.length}</div></div>
+      </div>
+    </div>`;
+  document.getElementById('tab-analytics').innerHTML = html;
+}
+
+// ── Actions ───────────────────────────────────────────────────────────
+function switchTab(tab) {
+  state.tab = tab;
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
+  render();
+}
+
+function setFilter(f) { state.statusFilter = f; render(); }
+function setInvCat(c) { state.invCategory = c; render(); }
+
+function advanceOrder(id) {
+  const o = state.orders.find(o => o.id === id);
+  if (!o) return;
+  const idx = STATUS_FLOW.indexOf(o.status);
+  if (idx < STATUS_FLOW.length - 1) o.status = STATUS_FLOW[idx + 1];
+  persist(); render();
+}
+
+function toggleStock(id) {
+  const item = state.inventory.find(i => i.id === id);
+  if (item) item.inStock = !item.inStock;
+  persist(); render();
+}
+
+function clearNotifs() { state.notifs = 0; persist(); render(); }
+
+// ── Modal ─────────────────────────────────────────────────────────────
+function openModal() { state.modalItems = []; document.getElementById('modal').style.display = 'flex'; document.getElementById('custName').value = ''; document.getElementById('modalSearch').value = ''; renderModalResults(); renderModalChips(); }
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+
+function renderModalResults() {
+  const q = document.getElementById('modalSearch').value.toLowerCase();
+  const el = document.getElementById('modalResults');
+  if (!q) { el.innerHTML = ''; return; }
+  const matches = state.inventory.filter(i => i.inStock && i.name.toLowerCase().includes(q));
+  el.innerHTML = matches.map(i => `<div class="inv-item" style="cursor:pointer" onclick="addModalItem(${i.id})"><div class="inv-info"><div class="inv-name">${i.name}</div></div><div class="inv-price">$${i.price.toFixed(2)}</div></div>`).join('');
+}
+
+function addModalItem(id) {
+  const item = state.inventory.find(i => i.id === id);
+  if (!item) return;
+  const existing = state.modalItems.find(i => i.id === id);
+  if (existing) existing.qty++;
+  else state.modalItems.push({id:item.id, name:item.name, price:item.price, qty:1});
+  document.getElementById('modalSearch').value = '';
+  document.getElementById('modalResults').innerHTML = '';
+  renderModalChips();
+}
+
+function removeModalItem(id) {
+  state.modalItems = state.modalItems.filter(i => i.id !== id);
+  renderModalChips();
+}
+
+function renderModalChips() {
+  const total = state.modalItems.reduce((s,i) => s + i.price * i.qty, 0);
+  document.getElementById('modalChips').innerHTML = state.modalItems.map(i => `<div class="item-chip">${i.qty}x ${i.name} <span class="item-chip-x" onclick="removeModalItem(${i.id})">${svgX}</span></div>`).join('');
+  document.getElementById('modalTotal').textContent = '$' + total.toFixed(2);
+  document.getElementById('submitOrder').disabled = state.modalItems.length === 0;
+}
+
+function submitOrder() {
+  if (state.modalItems.length === 0) return;
+  const name = document.getElementById('custName').value || 'DoorDash Customer';
+  const total = state.modalItems.reduce((s,i) => s + i.price * i.qty, 0);
+  state.orders.unshift({
+    id: genId(), customerName: name,
+    items: state.modalItems.map(i => ({...i})),
+    total, status: 'new', createdAt: new Date().toISOString()
+  });
+  state.notifs++;
+  // Update ordersToday counts
+  state.modalItems.forEach(mi => {
+    const inv = state.inventory.find(i => i.id === mi.id);
+    if (inv) inv.ordersToday += mi.qty;
+  });
+  persist(); closeModal(); render();
+}
+
+// Register service worker for PWA / offline
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {});
+}
+
+// Init
+render();
+
+// Auto-refresh every 30s to update "X min ago"
+setInterval(render, 30000);
+</script>
+</body>
+</html>
